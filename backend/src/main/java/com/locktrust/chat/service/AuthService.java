@@ -5,18 +5,18 @@ import com.locktrust.chat.dto.request.OtpVerifyRequest;
 import com.locktrust.chat.dto.request.SignupRequest;
 import com.locktrust.chat.dto.response.AuthResponse;
 import com.locktrust.chat.dto.response.UserResponse;
-import com.locktrust.chat.model.Channel;
 import com.locktrust.chat.model.User;
 import com.locktrust.chat.model.UserStatus;
-import com.locktrust.chat.repository.ChannelRepository;
 import com.locktrust.chat.repository.UserRepository;
 import com.locktrust.chat.repository.UserStatusRepository;
 import com.locktrust.chat.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,18 +24,15 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserStatusRepository userStatusRepository;
-    private final ChannelRepository channelRepository;
     private final OtpService otpService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final String[] AVATAR_COLORS = {
         "#0099CC", "#00B8D4", "#26A69A", "#42A5F5",
         "#7E57C2", "#EC407A", "#EF5350", "#FF7043",
         "#8D6E63", "#78909C"
     };
-
-    // Default channels every new user is auto-joined to
-    private static final List<String> DEFAULT_CHANNELS = List.of("general", "random");
 
     @Transactional
     public AuthResponse signup(SignupRequest request) {
@@ -89,14 +86,11 @@ public class AuthService {
             user.setVerified(true);
             user = userRepository.save(user);
 
-            // Auto-join default channels
-            final User savedUser = user;
-            DEFAULT_CHANNELS.forEach(name ->
-                channelRepository.findByName(name).ifPresent(ch -> {
-                    ch.getMembers().add(savedUser);
-                    channelRepository.save(ch);
-                })
-            );
+            // Broadcast new user to all connected clients so their user lists update
+            Map<String, Object> event = new HashMap<>();
+            event.put("type", "USER_NEW");
+            event.put("payload", UserResponse.from(user));
+            messagingTemplate.convertAndSend("/topic/workspace/users", event);
         }
 
         String token = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId());

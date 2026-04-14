@@ -5,25 +5,31 @@ import { setActiveChannel } from '../../store/channelSlice'
 import { setActiveConv } from '../../store/dmSlice'
 import UserAvatar from '../shared/UserAvatar'
 import CreateChannelModal from '../channel/CreateChannelModal'
+import BrowseChannelsModal from '../channel/BrowseChannelsModal'
 import NewDmModal from '../dm/NewDmModal'
 import StatusModal from '../user/StatusModal'
 import SearchBar from '../search/SearchBar'
 import clsx from 'clsx'
+import Tooltip from '../shared/Tooltip'
 
 export default function Sidebar() {
   const dispatch = useDispatch()
   const { user } = useSelector((s: RootState) => s.auth)
-  const { channels, activeChannelId, unread: channelUnread } = useSelector((s: RootState) => s.channel)
+  const { channels, activeChannelId, unread: channelUnread, mentions: channelMentions } = useSelector((s: RootState) => s.channel)
   const { conversations, activeConvId, unread: dmUnread } = useSelector((s: RootState) => s.dm)
   const allUsers = useSelector((s: RootState) => s.users.users)
 
   const [showCreateChannel, setShowCreateChannel] = useState(false)
+  const [showBrowseChannels, setShowBrowseChannels] = useState(false)
   const [showNewDm, setShowNewDm] = useState(false)
   const [showStatus, setShowStatus] = useState(false)
   const [channelsCollapsed, setChannelsCollapsed] = useState(false)
   const [dmsCollapsed, setDmsCollapsed] = useState(false)
 
+  // Only show channels the user is a member of
   const myChannels = channels.filter(c => user && c.memberIds.includes(user.id))
+  // Count joinable public channels
+  const joinableCount = channels.filter(c => !c.isPrivate && user && !c.memberIds.includes(user.id)).length
 
   function selectChannel(id: number) {
     dispatch(setActiveChannel(id))
@@ -66,6 +72,7 @@ export default function Sidebar() {
 
       {/* Scrollable area */}
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
+
         {/* Channels section */}
         <div className="mb-2">
           <div
@@ -84,35 +91,53 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {!channelsCollapsed && myChannels.map(ch => (
-            <button
-              key={ch.id}
-              onClick={() => selectChannel(ch.id)}
-              className={clsx(
-                'w-full text-left px-4 py-1.5 flex items-center gap-2 rounded-md mx-1 transition-colors text-sm',
-                activeChannelId === ch.id
-                  ? 'bg-sidebar-active text-white'
-                  : 'text-sidebar-text hover:bg-sidebar-hover'
-              )}
-            >
-              <span className="text-sidebar-muted">{ch.isPrivate ? '🔒' : '#'}</span>
-              <span className="flex-1 truncate">{ch.name}</span>
-              {channelUnread[ch.id] > 0 && (
-                <span className="bg-brand-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                  {channelUnread[ch.id]}
-                </span>
-              )}
-            </button>
-          ))}
+          {!channelsCollapsed && (
+            <>
+              {myChannels.map(ch => {
+                const hasUnread = (channelUnread[ch.id] || 0) > 0
+                const mentionCount = channelMentions[ch.id] || 0
+                const isActive = activeChannelId === ch.id
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => selectChannel(ch.id)}
+                    className={clsx(
+                      'w-full text-left px-4 py-1.5 flex items-center gap-2 rounded-md mx-1 transition-colors text-sm',
+                      isActive
+                        ? 'bg-sidebar-active text-white'
+                        : hasUnread
+                          ? 'text-white hover:bg-sidebar-hover'
+                          : 'text-sidebar-text hover:bg-sidebar-hover'
+                    )}
+                  >
+                    <span className={clsx(isActive || hasUnread ? 'text-white' : 'text-sidebar-muted')}>
+                      {ch.isPrivate ? '🔒' : '#'}
+                    </span>
+                    <span className={clsx('flex-1 truncate', hasUnread && !isActive && 'font-bold')}>
+                      {ch.name}
+                    </span>
+                    {mentionCount > 0 && !isActive && (
+                      <span className="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                        @{mentionCount}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
 
-          {/* Browse channels if not member of many */}
-          {!channelsCollapsed && channels.filter(c => user && !c.memberIds.includes(user.id)).length > 0 && (
-            <button
-              onClick={() => {}}
-              className="w-full text-left px-4 py-1.5 text-sidebar-muted hover:text-sidebar-text text-xs italic mx-1"
-            >
-              + Browse all channels
-            </button>
+              <button
+                onClick={() => setShowBrowseChannels(true)}
+                className="w-full text-left px-4 py-1.5 flex items-center gap-2 text-sidebar-muted hover:text-sidebar-text text-xs mx-1 rounded-md hover:bg-sidebar-hover transition-colors"
+              >
+                <span className="text-base leading-none">🔍</span>
+                <span>Browse channels</span>
+                {joinableCount > 0 && (
+                  <span className="ml-auto bg-sidebar-muted/30 text-sidebar-muted text-xs rounded-full px-1.5 py-0.5">
+                    {joinableCount}
+                  </span>
+                )}
+              </button>
+            </>
           )}
         </div>
 
@@ -137,12 +162,13 @@ export default function Sidebar() {
           {!dmsCollapsed && conversations.map(conv => {
             const other = getConvUser(conv)
             const otherFull = allUsers.find(u => u.id === other?.id)
+            const statusMsg = otherFull?.customStatusMessage
             return (
               <button
                 key={conv.id}
                 onClick={() => selectConv(conv.id)}
                 className={clsx(
-                  'w-full text-left px-4 py-1.5 flex items-center gap-2 rounded-md mx-1 transition-colors text-sm',
+                  'w-full text-left px-4 py-1.5 flex items-center gap-2 rounded-md mx-1 transition-colors text-sm group/dm',
                   activeConvId === conv.id
                     ? 'bg-sidebar-active text-white'
                     : 'text-sidebar-text hover:bg-sidebar-hover'
@@ -156,9 +182,18 @@ export default function Sidebar() {
                     presence={otherFull?.presence || other.presence}
                   />
                 )}
-                <span className="flex-1 truncate">{getConvName(conv)}</span>
-                {dmUnread[conv.id] > 0 && (
-                  <span className="bg-brand-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                <div className="flex-1 min-w-0 flex items-center gap-1">
+                  <span className={clsx('truncate', dmUnread[conv.id] > 0 && activeConvId !== conv.id && 'font-bold text-white')}>
+                    {getConvName(conv)}
+                  </span>
+                  {statusMsg && (
+                    <Tooltip text={statusMsg}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-sidebar-muted flex-shrink-0 opacity-60" />
+                    </Tooltip>
+                  )}
+                </div>
+                {dmUnread[conv.id] > 0 && activeConvId !== conv.id && (
+                  <span className="bg-brand-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center flex-shrink-0">
                     {dmUnread[conv.id]}
                   </span>
                 )}
@@ -199,6 +234,7 @@ export default function Sidebar() {
       )}
 
       <CreateChannelModal open={showCreateChannel} onClose={() => setShowCreateChannel(false)} />
+      <BrowseChannelsModal open={showBrowseChannels} onClose={() => setShowBrowseChannels(false)} />
       <NewDmModal open={showNewDm} onClose={() => setShowNewDm(false)} />
       <StatusModal open={showStatus} onClose={() => setShowStatus(false)} />
     </div>

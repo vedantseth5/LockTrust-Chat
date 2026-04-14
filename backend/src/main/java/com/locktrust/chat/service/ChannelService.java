@@ -111,8 +111,9 @@ public class ChannelService {
 
         boolean isAdmin = "ADMIN".equals(requester.getRole());
         boolean isCreator = channel.getCreatedBy() != null && channel.getCreatedBy().getId().equals(requester.getId());
-        if (!isAdmin && !isCreator) {
-            throw new RuntimeException("Only channel creator or admin can add members.");
+        boolean isMember = channel.getMembers().stream().anyMatch(m -> m.getId().equals(requester.getId()));
+        if (!isAdmin && !isCreator && !isMember) {
+            throw new RuntimeException("You must be a member to invite others to this channel.");
         }
 
         channel.getMembers().add(target);

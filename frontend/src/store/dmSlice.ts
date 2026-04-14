@@ -32,11 +32,27 @@ const dmSlice = createSlice({
       if (action.payload !== null) state.unread[action.payload] = 0
     },
     setMessages(state, action: PayloadAction<{ convId: number; messages: DirectMessage[] }>) {
-      state.messages[action.payload.convId] = action.payload.messages
+      const existing = state.messages[action.payload.convId] || []
+      const fetched = action.payload.messages
+
+      // Collect all unique messages by id
+      const byId = new Map<number, DirectMessage>()
+      existing.forEach(m => byId.set(m.id, m))
+      fetched.forEach(m => byId.set(m.id, m))
+
+      const merged = Array.from(byId.values())
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+      // Skip update if nothing changed
+      if (merged.length === existing.length && merged.every((m, i) => m.id === existing[i]?.id)) return
+
+      state.messages[action.payload.convId] = merged
     },
     addMessage(state, action: PayloadAction<DirectMessage>) {
       const { conversationId } = action.payload
       if (!state.messages[conversationId]) state.messages[conversationId] = []
+      const already = state.messages[conversationId].some(m => m.id === action.payload.id)
+      if (already) return
       state.messages[conversationId].push(action.payload)
       if (state.activeConvId !== conversationId) {
         state.unread[conversationId] = (state.unread[conversationId] || 0) + 1

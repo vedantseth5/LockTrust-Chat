@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '../../store'
 import { setMessages, addMessage } from '../../store/dmSlice'
@@ -17,13 +17,30 @@ export default function DmView() {
 
   const conv = conversations.find(c => c.id === activeConvId)
   const convMessages = activeConvId ? messages[activeConvId] || [] : []
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval>>()
 
+  // Load messages when conversation changes, then poll every 2s for new ones
   useEffect(() => {
     if (!activeConvId) return
-    dmApi.getMessages(activeConvId).then(res => {
-      dispatch(setMessages({ convId: activeConvId, messages: res.data.content || res.data }))
-    })
-  }, [activeConvId, dispatch])
+    const convId = activeConvId
+
+    function fetchMessages() {
+      dmApi.getMessages(convId).then(res => {
+        const fetched: DirectMessage[] = res.data.content || res.data
+        dispatch(setMessages({ convId, messages: fetched }))
+      })
+    }
+
+    fetchMessages()
+    pollRef.current = setInterval(fetchMessages, 2000)
+
+    return () => clearInterval(pollRef.current)
+  }, [activeConvId])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [convMessages.length])
 
   async function handleSend(content: string) {
     if (!activeConvId) return
@@ -61,11 +78,15 @@ export default function DmView() {
         )}
         <div>
           <div className="font-bold text-gray-900">{headerTitle}</div>
-          {!conv.isGroup && otherParticipants[0] && (
-            <div className="text-xs text-gray-400 capitalize">
-              {allUsers.find(u => u.id === otherParticipants[0].id)?.presence?.toLowerCase() || 'offline'}
-            </div>
-          )}
+          {!conv.isGroup && otherParticipants[0] && (() => {
+            const other = allUsers.find(u => u.id === otherParticipants[0].id)
+            const presenceLabel: Record<string, string> = { ONLINE: 'Online', AWAY: 'Away', DND: 'Do not disturb', OFFLINE: 'Offline' }
+            return (
+              <div className="text-xs text-gray-400">
+                {presenceLabel[other?.presence || 'OFFLINE'] || 'Offline'}
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -77,7 +98,7 @@ export default function DmView() {
             <p>Start a conversation with {headerTitle}</p>
           </div>
         )}
-        {convMessages.map((msg, idx) => {
+        {convMessages.map((msg) => {
           const msgDate = formatMessageDate(msg.createdAt)
           const showDate = msgDate !== lastDate
           lastDate = msgDate
@@ -113,6 +134,7 @@ export default function DmView() {
             </React.Fragment>
           )
         })}
+        <div ref={bottomRef} />
       </div>
 
       <MessageInput

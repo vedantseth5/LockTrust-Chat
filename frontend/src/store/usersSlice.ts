@@ -14,6 +14,11 @@ const usersSlice = createSlice({
     setUsers(state, action: PayloadAction<User[]>) {
       state.users = action.payload
     },
+    addUser(state, action: PayloadAction<User>) {
+      if (!state.users.find(u => u.id === action.payload.id)) {
+        state.users.push(action.payload)
+      }
+    },
     updateUserPresence(state, action: PayloadAction<{ userId: number; presence: string; customMessage?: string }>) {
       const user = state.users.find(u => u.id === action.payload.userId)
       if (user) {
@@ -24,5 +29,5 @@ const usersSlice = createSlice({
   },
 })
 
-export const { setUsers, updateUserPresence } = usersSlice.actions
+export const { setUsers, addUser, updateUserPresence } = usersSlice.actions
 export default usersSlice.reducer

@@ -7,9 +7,11 @@ import { subscribeToChannel } from '../../socket/socketClient'
 import MessageFeed from '../messaging/MessageFeed'
 import MessageInput from '../messaging/MessageInput'
 import ChannelMembersPanel from './ChannelMembersPanel'
+import InviteToChannelModal from './InviteToChannelModal'
 
 export default function ChannelView() {
   const dispatch = useDispatch()
+  const { user } = useSelector((s: RootState) => s.auth)
   const activeChannelId = useSelector((s: RootState) => s.channel.activeChannelId)
   const channels = useSelector((s: RootState) => s.channel.channels)
   const messages = useSelector((s: RootState) =>
@@ -19,9 +21,12 @@ export default function ChannelView() {
     activeChannelId ? s.ui.typingUsers[activeChannelId] || [] : []
   )
   const [showMembers, setShowMembers] = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const channel = channels.find(c => c.id === activeChannelId)
+  const isMember = channel && user ? channel.memberIds.includes(user.id) : false
+  const canInvite = isMember
 
   useEffect(() => {
     if (!activeChannelId) return
@@ -54,8 +59,11 @@ export default function ChannelView() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-2">
-            <span className="text-gray-400 font-bold text-lg">#</span>
+            <span className="text-gray-400 font-bold text-lg">{channel.isPrivate ? '🔒' : '#'}</span>
             <span className="font-bold text-gray-900 text-lg">{channel.name}</span>
+            {channel.isPrivate && (
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Private</span>
+            )}
             {channel.description && (
               <>
                 <span className="text-gray-200">|</span>
@@ -64,6 +72,18 @@ export default function ChannelView() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {canInvite && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium transition-colors"
+                title="Invite people"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+                Invite
+              </button>
+            )}
             <button
               onClick={() => setShowMembers(v => !v)}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -97,6 +117,12 @@ export default function ChannelView() {
       {showMembers && (
         <ChannelMembersPanel channelId={channel.id} onClose={() => setShowMembers(false)} />
       )}
+
+      <InviteToChannelModal
+        open={showInvite}
+        onClose={() => setShowInvite(false)}
+        channelId={channel.id}
+      />
     </div>
   )
 }

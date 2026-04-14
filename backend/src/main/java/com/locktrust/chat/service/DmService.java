@@ -90,15 +90,17 @@ public class DmService {
         msg = messageRepository.save(msg);
         DirectMessageResponse response = DirectMessageResponse.from(msg);
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("message", response);
+        payload.put("conversation", DmConversationResponse.from(conv));
+
         Map<String, Object> event = new HashMap<>();
         event.put("type", "DM_NEW");
-        event.put("payload", response);
+        event.put("payload", payload);
 
-        conv.getParticipants().forEach(p -> {
-            if (!p.getId().equals(sender.getId())) {
-                messagingTemplate.convertAndSendToUser(p.getEmail(), "/queue/dm", event);
-            }
-        });
+        conv.getParticipants().stream()
+            .filter(p -> !p.getId().equals(sender.getId()))
+            .forEach(p -> messagingTemplate.convertAndSendToUser(p.getEmail(), "/queue/dm", event));
 
         return response;
     }

@@ -11,14 +11,15 @@ import {
   updateMemberJoined,
   updateMemberLeft,
 } from '../store/channelSlice'
-import { addMessage as addDmMessage } from '../store/dmSlice'
-import { updateUserPresence } from '../store/usersSlice'
+import { addMessage as addDmMessage, addConversation } from '../store/dmSlice'
+import { addUser, updateUserPresence } from '../store/usersSlice'
 import { updatePresence } from '../store/authSlice'
 import { addNotification, setTyping } from '../store/uiSlice'
 import toast from 'react-hot-toast'
 
 let client: Client | null = null
 const subscriptions: StompSubscription[] = []
+const subscribedChannels = new Set<number>()
 
 export function connectSocket(token: string, subscribedChannelIds: number[]) {
   if (client?.active) return
@@ -29,6 +30,22 @@ export function connectSocket(token: string, subscribedChannelIds: number[]) {
     reconnectDelay: 3000,
     onConnect: () => {
       console.log('[WS] Connected')
+
+      // Clear any stale subscriptions from a previous connect/reconnect
+      subscriptions.forEach(s => s.unsubscribe())
+      subscriptions.length = 0
+      subscribedChannels.clear()
+
+      // Mark user as ONLINE as soon as socket connects
+      const { user } = store.getState().auth
+      if (user) {
+        import('../api/userApi').then(({ userApi }) => {
+          userApi.updateStatus('ONLINE', user.customStatusMessage || '').then(() => {
+            store.dispatch(updatePresence({ userId: user.id, presence: 'ONLINE', customMessage: user.customStatusMessage || '' }))
+            store.dispatch(updateUserPresence({ userId: user.id, presence: 'ONLINE', customMessage: user.customStatusMessage || '' }))
+          }).catch(() => {})
+        })
+      }
 
       // Subscribe to each channel
       subscribedChannelIds.forEach(id => subscribeToChannel(id))
@@ -53,11 +70,24 @@ export function connectSocket(token: string, subscribedChannelIds: number[]) {
         }
       })
 
+      const usersSub = client!.subscribe('/topic/workspace/users', (msg) => {
+        const event = JSON.parse(msg.body)
+        if (event.type === 'USER_NEW') {
+          store.dispatch(addUser(event.payload))
+        }
+      })
+
       // User-specific queues
       const dmSub = client!.subscribe('/user/queue/dm', (msg) => {
         const event = JSON.parse(msg.body)
         if (event.type === 'DM_NEW') {
-          store.dispatch(addDmMessage(event.payload))
+          const { message, conversation } = event.payload
+          // Add conversation to sidebar if not already known
+          const known = store.getState().dm.conversations.find((c: { id: number }) => c.id === conversation.id)
+          if (!known) {
+            store.dispatch(addConversation(conversation))
+          }
+          store.dispatch(addDmMessage(message))
         }
       })
 
@@ -76,7 +106,7 @@ export function connectSocket(token: string, subscribedChannelIds: number[]) {
         }
       })
 
-      subscriptions.push(presenceSub, channelsSub, dmSub, notifSub)
+      subscriptions.push(presenceSub, channelsSub, usersSub, dmSub, notifSub)
     },
     onDisconnect: () => console.log('[WS] Disconnected'),
     onStompError: (frame) => console.error('[WS] STOMP error', frame),
@@ -87,14 +117,22 @@ export function connectSocket(token: string, subscribedChannelIds: number[]) {
 
 export function subscribeToChannel(channelId: number) {
   if (!client?.active) return
+  if (subscribedChannels.has(channelId)) return
+  subscribedChannels.add(channelId)
 
   const msgSub = client.subscribe(`/topic/channel/${channelId}`, (msg) => {
     const event = JSON.parse(msg.body)
     const p = event.payload
     switch (event.type) {
-      case 'MESSAGE_NEW':
-        store.dispatch(addChannelMessage(p))
+      case 'MESSAGE_NEW': {
+        const me = store.getState().auth.user
+        const isMention = me
+          ? p.content?.toLowerCase().includes(`@${me.displayName.toLowerCase()}`) ||
+            p.content?.includes(`@${me.id}`)
+          : false
+        store.dispatch(addChannelMessage({ ...p, isMention }))
         break
+      }
       case 'MESSAGE_EDIT':
         store.dispatch(updateChannelMessage(p))
         break
@@ -142,8 +180,16 @@ export function sendTyping(channelId: number, userId: number, displayName: strin
 }
 
 export function disconnectSocket() {
+  // Best-effort: mark OFFLINE before disconnecting
+  const { user } = store.getState().auth
+  if (user) {
+    import('../api/userApi').then(({ userApi }) => {
+      userApi.updateStatus('OFFLINE', user.customStatusMessage || '').catch(() => {})
+    })
+  }
   subscriptions.forEach(s => s.unsubscribe())
   subscriptions.length = 0
+  subscribedChannels.clear()
   client?.deactivate()
   client = null
 }

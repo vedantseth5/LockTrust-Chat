@@ -72,7 +72,10 @@ public class UserService {
         if (request.getPresence() != null) status.setPresence(request.getPresence());
         if (request.getCustomMessage() != null) status.setCustomMessage(request.getCustomMessage());
         status.setUpdatedAt(LocalDateTime.now());
-        userStatusRepository.save(status);
+        status = userStatusRepository.save(status);
+
+        // Keep user entity in sync so UserResponse.from(user) is accurate
+        user.setStatus(status);
 
         // Broadcast presence update
         Map<String, Object> event = new HashMap<>();

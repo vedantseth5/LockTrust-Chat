@@ -1,17 +1,22 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '../store'
 import { setChannels, setActiveChannel } from '../store/channelSlice'
 import { setConversations } from '../store/dmSlice'
 import { setUsers } from '../store/usersSlice'
+import { setAuth, updatePresence } from '../store/authSlice'
+import { updateUserPresence } from '../store/usersSlice'
 import { channelApi } from '../api/channelApi'
 import { dmApi } from '../api/dmApi'
 import { userApi } from '../api/userApi'
 import { connectSocket, disconnectSocket } from '../socket/socketClient'
+import { store } from '../store'
 import Sidebar from '../components/sidebar/Sidebar'
 import ChannelView from '../components/channel/ChannelView'
 import DmView from '../components/dm/DmView'
 import ThreadPanel from '../components/messaging/ThreadPanel'
+
+const AWAY_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes of inactivity → AWAY
 
 export default function WorkspacePage() {
   const dispatch = useDispatch()
@@ -19,6 +24,17 @@ export default function WorkspacePage() {
   const activeChannelId = useSelector((s: RootState) => s.channel.activeChannelId)
   const activeConvId = useSelector((s: RootState) => s.dm.activeConvId)
   const threadMessageId = useSelector((s: RootState) => s.ui.threadMessageId)
+  const pollRef = useRef<ReturnType<typeof setInterval>>()
+  const awayTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const isAwayRef = useRef(false)
+
+  // On refresh: token is in localStorage but user is null. Fetch /me to restore user.
+  useEffect(() => {
+    if (!token || user) return
+    userApi.getMe().then(res => {
+      dispatch(setAuth({ token, user: res.data }))
+    })
+  }, [token])
 
   useEffect(() => {
     if (!token || !user) return
@@ -33,11 +49,12 @@ export default function WorkspacePage() {
       dispatch(setConversations(dmsRes.data))
       dispatch(setUsers(usersRes.data))
 
-      // Auto-select #general (or first channel user is member of)
       const myChannels: { id: number; memberIds: number[] }[] = allChannels.filter(
         (ch: { memberIds: number[] }) => ch.memberIds.includes(user.id)
       )
-      if (myChannels.length > 0) {
+      // Only auto-select the first channel if nothing is already open
+      const currentActive = store.getState().channel.activeChannelId
+      if (!currentActive && myChannels.length > 0) {
         dispatch(setActiveChannel(myChannels[0].id))
       }
 
@@ -45,8 +62,55 @@ export default function WorkspacePage() {
       connectSocket(token, myChannelIds)
     })
 
+    pollRef.current = setInterval(() => {
+      userApi.getAll().then(res => dispatch(setUsers(res.data)))
+      dmApi.getConversations().then(res => dispatch(setConversations(res.data)))
+    }, 15000)
+
     return () => {
+      clearInterval(pollRef.current)
       disconnectSocket()
+    }
+  }, [token, user?.id])
+
+  // Auto-away on inactivity, back to online on activity
+  useEffect(() => {
+    if (!token || !user) return
+    const userId = user.id
+
+    function getCurrentUser() {
+      return store.getState().auth.user
+    }
+
+    function goAway() {
+      if (isAwayRef.current) return
+      const u = getCurrentUser()
+      if (!u || u.presence === 'DND' || u.presence === 'OFFLINE') return
+      isAwayRef.current = true
+      userApi.updateStatus('AWAY', u.customStatusMessage || '')
+      dispatch(updatePresence({ userId, presence: 'AWAY', customMessage: u.customStatusMessage || '' }))
+      dispatch(updateUserPresence({ userId, presence: 'AWAY', customMessage: u.customStatusMessage || '' }))
+    }
+
+    function goOnline() {
+      clearTimeout(awayTimerRef.current)
+      awayTimerRef.current = setTimeout(goAway, AWAY_TIMEOUT_MS)
+      if (!isAwayRef.current) return
+      const u = getCurrentUser()
+      if (!u || u.presence === 'DND' || u.presence === 'OFFLINE') return
+      isAwayRef.current = false
+      userApi.updateStatus('ONLINE', u.customStatusMessage || '')
+      dispatch(updatePresence({ userId, presence: 'ONLINE', customMessage: u.customStatusMessage || '' }))
+      dispatch(updateUserPresence({ userId, presence: 'ONLINE', customMessage: u.customStatusMessage || '' }))
+    }
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll']
+    events.forEach(e => window.addEventListener(e, goOnline, { passive: true }))
+    awayTimerRef.current = setTimeout(goAway, AWAY_TIMEOUT_MS)
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, goOnline))
+      clearTimeout(awayTimerRef.current)
     }
   }, [token, user?.id])
 

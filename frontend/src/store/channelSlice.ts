@@ -6,6 +6,7 @@ interface ChannelState {
   activeChannelId: number | null
   messages: Record<number, Message[]>
   unread: Record<number, number>
+  mentions: Record<number, number>
   loading: boolean
 }
 
@@ -14,6 +15,7 @@ const initialState: ChannelState = {
   activeChannelId: null,
   messages: {},
   unread: {},
+  mentions: {},
   loading: false,
 }
 
@@ -37,17 +39,23 @@ const channelSlice = createSlice({
       state.activeChannelId = action.payload
       if (action.payload !== null) {
         state.unread[action.payload] = 0
+        state.mentions[action.payload] = 0
       }
     },
     setMessages(state, action: PayloadAction<{ channelId: number; messages: Message[] }>) {
       state.messages[action.payload.channelId] = action.payload.messages
     },
-    addMessage(state, action: PayloadAction<Message>) {
+    addMessage(state, action: PayloadAction<Message & { isMention?: boolean }>) {
       const { channelId } = action.payload
       if (!state.messages[channelId]) state.messages[channelId] = []
+      const already = state.messages[channelId].some(m => m.id === action.payload.id)
+      if (already) return
       state.messages[channelId].push(action.payload)
       if (state.activeChannelId !== channelId) {
         state.unread[channelId] = (state.unread[channelId] || 0) + 1
+        if (action.payload.isMention) {
+          state.mentions[channelId] = (state.mentions[channelId] || 0) + 1
+        }
       }
     },
     updateMessage(state, action: PayloadAction<Message>) {

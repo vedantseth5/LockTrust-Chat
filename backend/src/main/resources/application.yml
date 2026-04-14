@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:locktrust;DB_CLOSE_DELAY=-1;MODE=MySQL
+    url: jdbc:h2:file:./data/locktrust;AUTO_SERVER=TRUE;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -13,7 +13,7 @@ spring:
       path: /h2-console
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -37,7 +37,7 @@ spring:
 app:
   jwt:
     secret: "bG9ja3RydXN0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1zaWduaW5nLTIwMjQ="
-    access-token-expiry-ms: 3600000
+    access-token-expiry-ms: 604800000
     refresh-token-expiry-ms: 604800000
   otp:
     expiry-minutes: 10

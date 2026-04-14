@@ -1,17 +1,24 @@
 import React, { useState, useRef } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from '../../store'
 import { searchApi } from '../../api/searchApi'
-import { setActiveChannel } from '../../store/channelSlice'
-import { setActiveConv } from '../../store/dmSlice'
+import { dmApi } from '../../api/dmApi'
+import { channelApi } from '../../api/channelApi'
+import { setActiveChannel, updateChannel } from '../../store/channelSlice'
+import { addConversation, setActiveConv } from '../../store/dmSlice'
+import { subscribeToChannel } from '../../socket/socketClient'
+import toast from 'react-hot-toast'
 
 interface SearchResult {
   messages: { id: number; channelId: number; senderName: string; content: string }[]
-  channels: { id: number; name: string }[]
+  channels: { id: number; name: string; isPrivate: boolean }[]
   users: { id: number; displayName: string; email: string }[]
 }
 
 export default function SearchBar() {
   const dispatch = useDispatch()
+  const { user } = useSelector((s: RootState) => s.auth)
+  const allChannels = useSelector((s: RootState) => s.channel.channels)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult | null>(null)
   const [open, setOpen] = useState(false)
@@ -35,9 +42,43 @@ export default function SearchBar() {
     }, 300)
   }
 
-  function handleChannelClick(channelId: number) {
-    dispatch(setActiveChannel(channelId))
+  async function handleChannelClick(channelId: number, isPrivate: boolean) {
     setOpen(false); setQuery('')
+    const channel = allChannels.find(c => c.id === channelId)
+    const isMember = channel && user ? channel.memberIds.includes(user.id) : false
+
+    if (isMember || isPrivate) {
+      // Already a member (or private — can't self-join), just navigate
+      dispatch(setActiveChannel(channelId))
+      dispatch(setActiveConv(null))
+      if (isPrivate && !isMember) {
+        toast.error('This is a private channel. Ask a member to invite you.')
+      }
+    } else {
+      // Public channel, not a member — auto-join
+      try {
+        const res = await channelApi.join(channelId)
+        dispatch(updateChannel(res.data))
+        subscribeToChannel(channelId)
+        dispatch(setActiveChannel(channelId))
+        dispatch(setActiveConv(null))
+        toast.success(`Joined #${res.data.name}`)
+      } catch (err: any) {
+        toast.error(err.response?.data?.error || 'Failed to join channel')
+      }
+    }
+  }
+
+  async function handleUserClick(userId: number) {
+    setOpen(false); setQuery('')
+    try {
+      const res = await dmApi.createConversation([userId])
+      dispatch(addConversation(res.data))
+      dispatch(setActiveConv(res.data.id))
+      dispatch(setActiveChannel(null))
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Could not open DM')
+    }
   }
 
   const hasResults = results && (results.messages.length + results.channels.length + results.users.length) > 0
@@ -70,13 +111,23 @@ export default function SearchBar() {
           {results?.channels.length ? (
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">Channels</div>
-              {results.channels.map(ch => (
-                <button key={ch.id} onClick={() => handleChannelClick(ch.id)}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left">
-                  <span className="text-gray-400">#</span>
-                  <span className="text-sm text-gray-900">{ch.name}</span>
-                </button>
-              ))}
+              {results.channels.map(ch => {
+                const channelInStore = allChannels.find(c => c.id === ch.id)
+                const isMember = channelInStore && user ? channelInStore.memberIds.includes(user.id) : false
+                return (
+                  <button key={ch.id} onClick={() => handleChannelClick(ch.id, ch.isPrivate ?? false)}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left">
+                    <span className="text-gray-400">{ch.isPrivate ? '🔒' : '#'}</span>
+                    <span className="text-sm text-gray-900">{ch.name}</span>
+                    {!isMember && !ch.isPrivate && (
+                      <span className="ml-auto text-xs text-brand-600 font-medium">Join</span>
+                    )}
+                    {ch.isPrivate && !isMember && (
+                      <span className="ml-auto text-xs text-gray-400">Private</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           ) : null}
 
@@ -84,7 +135,7 @@ export default function SearchBar() {
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">Messages</div>
               {results.messages.map(msg => (
-                <button key={msg.id} onClick={() => handleChannelClick(msg.channelId)}
+                <button key={msg.id} onClick={() => handleChannelClick(msg.channelId, false)}
                   className="w-full flex flex-col px-4 py-2 hover:bg-gray-50 text-left">
                   <span className="text-xs font-semibold text-brand-600">{msg.senderName}</span>
                   <span className="text-sm text-gray-700 truncate">{msg.content}</span>
@@ -97,10 +148,11 @@ export default function SearchBar() {
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">People</div>
               {results.users.map(u => (
-                <div key={u.id} className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-                  <span className="text-sm text-gray-900">{u.displayName}</span>
+                <button key={u.id} onClick={() => handleUserClick(u.id)}
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left">
+                  <span className="text-sm font-medium text-gray-900">{u.displayName}</span>
                   <span className="text-xs text-gray-400">{u.email}</span>
-                </div>
+                </button>
               ))}
             </div>
           ) : null}
