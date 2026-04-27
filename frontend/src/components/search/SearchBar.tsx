@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 interface SearchResult {
   messages: { id: number; channelId: number; senderName: string; content: string }[]
   channels: { id: number; name: string; isPrivate: boolean }[]
-  users: { id: number; displayName: string; email: string }[]
+  users: { id: number; displayName: string; phone: string; email?: string | null }[]
 }
 
 export default function SearchBar() {
@@ -151,7 +151,7 @@ export default function SearchBar() {
                 <button key={u.id} onClick={() => handleUserClick(u.id)}
                   className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left">
                   <span className="text-sm font-medium text-gray-900">{u.displayName}</span>
-                  <span className="text-xs text-gray-400">{u.email}</span>
+                  <span className="text-xs text-gray-400">{u.phone}</span>
                 </button>
               ))}
             </div>

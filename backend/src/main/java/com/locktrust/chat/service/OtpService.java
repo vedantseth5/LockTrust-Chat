@@ -3,6 +3,7 @@ package com.locktrust.chat.service;
 import com.locktrust.chat.model.OtpToken;
 import com.locktrust.chat.repository.OtpTokenRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,37 +11,36 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OtpService {
 
     private final OtpTokenRepository otpTokenRepository;
-    private final EmailService emailService;
 
     @Value("${app.otp.expiry-minutes}")
     private int expiryMinutes;
 
     @Transactional
-    public String generateAndSendOtp(String email, String purpose) {
-        otpTokenRepository.invalidateAllForEmailAndPurpose(email, purpose);
+    public void generateAndSendOtp(String phone, String purpose) {
+        otpTokenRepository.invalidateAllForPhoneAndPurpose(phone, purpose);
 
         String otp = "123456";
         OtpToken token = OtpToken.builder()
-                .email(email)
+                .phone(phone)
                 .otp(otp)
                 .purpose(purpose)
                 .expiresAt(LocalDateTime.now().plusMinutes(expiryMinutes))
                 .build();
         otpTokenRepository.save(token);
-        emailService.sendOtp(email, otp, purpose);
-        return otp;
+        log.info("[DEV] OTP for {} ({}): {}", phone, purpose, otp);
     }
 
     @Transactional
-    public boolean verifyOtp(String email, String otp, String purpose) {
+    public boolean verifyOtp(String phone, String otp, String purpose) {
         Optional<OtpToken> tokenOpt = otpTokenRepository
-                .findTopByEmailAndPurposeAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
-                        email, purpose, LocalDateTime.now());
+                .findTopByPhoneAndPurposeAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+                        phone, purpose, LocalDateTime.now());
 
         if (tokenOpt.isEmpty()) return false;
         OtpToken token = tokenOpt.get();

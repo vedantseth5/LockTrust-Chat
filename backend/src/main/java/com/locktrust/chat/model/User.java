@@ -16,6 +16,9 @@ public class User {
     private Long id;
 
     @Column(nullable = false, unique = true)
+    private String phone;
+
+    @Column(unique = true)
     private String email;
 
     @Column(name = "display_name", nullable = false)
@@ -31,9 +34,6 @@ public class User {
 
     @Column(name = "title")
     private String title;
-
-    @Column(name = "phone")
-    private String phone;
 
     @Column(name = "timezone")
     @Builder.Default

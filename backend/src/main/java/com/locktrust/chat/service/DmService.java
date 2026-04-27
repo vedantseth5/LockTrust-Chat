@@ -27,7 +27,7 @@ public class DmService {
     private final SimpMessagingTemplate messagingTemplate;
 
     public List<DmConversationResponse> getConversations(String userEmail) {
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
         return conversationRepository.findByParticipantId(user.getId()).stream()
                 .map(DmConversationResponse::from)
                 .collect(Collectors.toList());
@@ -35,7 +35,7 @@ public class DmService {
 
     @Transactional
     public DmConversationResponse createOrGetConversation(String requesterEmail, CreateDmRequest request) {
-        User requester = userService.getByEmail(requesterEmail);
+        User requester = userService.getByIdentifier(requesterEmail);
 
         List<Long> allParticipantIds = new ArrayList<>(request.getParticipantIds());
         if (!allParticipantIds.contains(requester.getId())) {
@@ -66,7 +66,7 @@ public class DmService {
     }
 
     public Page<DirectMessageResponse> getMessages(Long conversationId, String userEmail, int page, int size) {
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
         DmConversation conv = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Conversation not found"));
         boolean isMember = conv.getParticipants().stream().anyMatch(p -> p.getId().equals(user.getId()));
@@ -80,7 +80,7 @@ public class DmService {
     public DirectMessageResponse sendMessage(Long conversationId, String senderEmail, SendMessageRequest request) {
         DmConversation conv = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Conversation not found"));
-        User sender = userService.getByEmail(senderEmail);
+        User sender = userService.getByIdentifier(senderEmail);
 
         DirectMessage.DirectMessageBuilder builder = DirectMessage.builder()
                 .conversation(conv)
@@ -109,7 +109,10 @@ public class DmService {
 
         conv.getParticipants().stream()
             .filter(p -> !p.getId().equals(sender.getId()))
-            .forEach(p -> messagingTemplate.convertAndSendToUser(p.getEmail(), "/queue/dm", event));
+            .forEach(p -> messagingTemplate.convertAndSendToUser(
+                    p.getPhone(),
+                    "/queue/dm",
+                    event));
 
         return response;
     }
@@ -118,7 +121,7 @@ public class DmService {
     public DirectMessageResponse editMessage(Long conversationId, Long messageId, String editorEmail, SendMessageRequest request) {
         DirectMessage msg = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User editor = userService.getByEmail(editorEmail);
+        User editor = userService.getByIdentifier(editorEmail);
         if (!msg.getSender().getId().equals(editor.getId())) throw new RuntimeException("Cannot edit others' messages.");
         msg.setContent(request.getContent());
         msg.setEdited(true);
@@ -129,7 +132,7 @@ public class DmService {
     public void deleteMessage(Long conversationId, Long messageId, String deleterEmail) {
         DirectMessage msg = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User deleter = userService.getByEmail(deleterEmail);
+        User deleter = userService.getByIdentifier(deleterEmail);
         if (!msg.getSender().getId().equals(deleter.getId())) throw new RuntimeException("Cannot delete others' messages.");
         msg.setDeleted(true);
         messageRepository.save(msg);

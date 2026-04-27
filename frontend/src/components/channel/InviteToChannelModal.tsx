@@ -25,7 +25,7 @@ export default function InviteToChannelModal({ open, onClose, channelId }: Props
     u.id !== currentUser?.id &&
     !channel?.memberIds.includes(u.id) &&
     (u.displayName.toLowerCase().includes(search.toLowerCase()) ||
-     u.email.toLowerCase().includes(search.toLowerCase()))
+      (u.email || '').toLowerCase().includes(search.toLowerCase()))
   )
 
   async function handleAdd(userId: number, displayName: string) {
@@ -63,7 +63,7 @@ export default function InviteToChannelModal({ open, onClose, channelId }: Props
               <UserAvatar displayName={u.displayName} avatarColor={u.avatarColor} size="sm" presence={u.presence} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 truncate">{u.displayName}</div>
-                <div className="text-xs text-gray-400 truncate">{u.email}</div>
+                <div className="text-xs text-gray-400 truncate">{u.phone}</div>
               </div>
               <button
                 onClick={() => handleAdd(u.id, u.displayName)}

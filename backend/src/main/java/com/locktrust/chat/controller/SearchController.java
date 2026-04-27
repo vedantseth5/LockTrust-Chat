@@ -31,7 +31,7 @@ public class SearchController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String q) {
 
-        Long userId = userService.getByEmail(userDetails.getUsername()).getId();
+        Long userId = userService.getByIdentifier(userDetails.getUsername()).getId();
 
         List<MessageResponse> messages = messageRepository.searchMessagesForUser(userId, q)
                 .stream().limit(20).map(MessageResponse::from).collect(Collectors.toList());

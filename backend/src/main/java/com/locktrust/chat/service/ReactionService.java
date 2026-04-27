@@ -34,7 +34,7 @@ public class ReactionService {
     public void toggleMessageReaction(Long messageId, String userEmail, String emoji) {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
 
         Optional<Reaction> existing = reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, user.getId(), emoji);
         String eventType;
@@ -63,7 +63,7 @@ public class ReactionService {
     public void toggleThreadReplyReaction(Long replyId, String userEmail, String emoji) {
         ThreadReply reply = threadReplyRepository.findById(replyId)
                 .orElseThrow(() -> new RuntimeException("Reply not found"));
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
 
         Optional<Reaction> existing = reactionRepository.findByThreadReplyIdAndUserIdAndEmoji(replyId, user.getId(), emoji);
         if (existing.isPresent()) {
@@ -78,7 +78,7 @@ public class ReactionService {
     public DirectMessageResponse toggleDmReaction(Long dmId, String userEmail, String emoji) {
         DirectMessage msg = directMessageRepository.findById(dmId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
 
         Optional<Reaction> existing = reactionRepository.findByDirectMessageIdAndUserIdAndEmoji(dmId, user.getId(), emoji);
         if (existing.isPresent()) {
@@ -97,7 +97,10 @@ public class ReactionService {
         event.put("type", "DM_REACTION");
         event.put("payload", response);
         msg.getConversation().getParticipants().forEach(p ->
-            messagingTemplate.convertAndSendToUser(p.getEmail(), "/queue/dm", event)
+            messagingTemplate.convertAndSendToUser(
+                    p.getPhone(),
+                    "/queue/dm",
+                    event)
         );
 
         return response;

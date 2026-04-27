@@ -41,7 +41,7 @@ public class ChannelService {
         if (channelRepository.existsByName(request.getName())) {
             throw new RuntimeException("Channel name already taken.");
         }
-        User creator = userService.getByEmail(creatorEmail);
+        User creator = userService.getByIdentifier(creatorEmail);
         Channel channel = Channel.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -64,7 +64,7 @@ public class ChannelService {
     public ChannelResponse joinChannel(Long channelId, String userEmail) {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new RuntimeException("Channel not found"));
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
 
         if (channel.getIsPrivate()) {
             throw new RuntimeException("Cannot join a private channel directly.");
@@ -89,7 +89,7 @@ public class ChannelService {
     public void leaveChannel(Long channelId, String userEmail) {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new RuntimeException("Channel not found"));
-        User user = userService.getByEmail(userEmail);
+        User user = userService.getByIdentifier(userEmail);
         channel.getMembers().remove(user);
         channelRepository.save(channel);
 
@@ -106,7 +106,7 @@ public class ChannelService {
     public ChannelResponse addMember(Long channelId, Long targetUserId, String requesterEmail) {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new RuntimeException("Channel not found"));
-        User requester = userService.getByEmail(requesterEmail);
+        User requester = userService.getByIdentifier(requesterEmail);
         User target = userService.getById(targetUserId);
 
         boolean isAdmin = "ADMIN".equals(requester.getRole());
@@ -121,8 +121,8 @@ public class ChannelService {
         return ChannelResponse.from(channel);
     }
 
-    public Long getUserIdByEmail(String email) {
-        return userService.getByEmail(email).getId();
+    public Long getUserIdByIdentifier(String email) {
+        return userService.getByIdentifier(email).getId();
     }
 
     public List<UserResponse> getChannelMembers(Long channelId) {

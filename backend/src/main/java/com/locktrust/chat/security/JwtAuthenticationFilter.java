@@ -33,8 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                    String phone = jwtTokenProvider.getPhoneFromToken(token);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(phone);
                     var auth = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

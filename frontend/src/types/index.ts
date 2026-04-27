@@ -1,11 +1,11 @@
 export interface User {
   id: number
-  email: string
+  phone: string
+  email?: string | null
   displayName: string
   role: string
   avatarColor: string
   title?: string
-  phone?: string
   timezone?: string
   presence: 'ONLINE' | 'AWAY' | 'DND' | 'OFFLINE'
   customStatusMessage?: string

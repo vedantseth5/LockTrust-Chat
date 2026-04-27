@@ -8,9 +8,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByPhone(String phone);
+    boolean existsByPhone(String phone);
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
-    @Query("SELECT u FROM User u WHERE LOWER(u.displayName) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))")
+    @Query("SELECT u FROM User u WHERE " +
+           "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "u.phone LIKE CONCAT('%', :q, '%') OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))")
     List<User> searchUsers(@Param("q") String query);
 }

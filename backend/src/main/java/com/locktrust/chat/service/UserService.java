@@ -26,9 +26,14 @@ public class UserService {
     private final UserStatusRepository userStatusRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public User getByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    public User getByPhone(String phone) {
+        return userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("User not found: " + phone));
+    }
+
+    // kept for callers that pass principal.getUsername() which is always phone
+    public User getByIdentifier(String phone) {
+        return getByPhone(phone);
     }
 
     public User getById(Long id) {
@@ -51,12 +56,22 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateProfile(String email, UpdateProfileRequest request) {
-        User user = getByEmail(email);
+    public UserResponse updateProfile(String phone, UpdateProfileRequest request) {
+        User user = getByPhone(phone);
         if (request.getDisplayName() != null && !request.getDisplayName().isBlank())
             user.setDisplayName(request.getDisplayName());
+        if (request.getEmail() != null) {
+            String email = request.getEmail().trim();
+            if (email.isEmpty()) {
+                user.setEmail(null);
+            } else {
+                userRepository.findByEmail(email)
+                        .filter(existing -> !existing.getId().equals(user.getId()))
+                        .ifPresent(existing -> { throw new RuntimeException("Email already in use."); });
+                user.setEmail(email);
+            }
+        }
         if (request.getTitle() != null) user.setTitle(request.getTitle());
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
         if (request.getTimezone() != null) user.setTimezone(request.getTimezone());
         if (request.getAvatarColor() != null) user.setAvatarColor(request.getAvatarColor());
         userRepository.save(user);
@@ -64,8 +79,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateStatus(String email, UpdateStatusRequest request) {
-        User user = getByEmail(email);
+    public UserResponse updateStatus(String phone, UpdateStatusRequest request) {
+        User user = getByPhone(phone);
         UserStatus status = userStatusRepository.findById(user.getId())
                 .orElse(UserStatus.builder().user(user).build());
 
@@ -73,11 +88,8 @@ public class UserService {
         if (request.getCustomMessage() != null) status.setCustomMessage(request.getCustomMessage());
         status.setUpdatedAt(LocalDateTime.now());
         status = userStatusRepository.save(status);
-
-        // Keep user entity in sync so UserResponse.from(user) is accurate
         user.setStatus(status);
 
-        // Broadcast presence update
         Map<String, Object> event = new HashMap<>();
         event.put("type", "PRESENCE_UPDATE");
         Map<String, Object> payload = new HashMap<>();
@@ -91,9 +103,9 @@ public class UserService {
     }
 
     @Transactional
-    public void setUserOnline(String email) {
+    public void setUserOnline(String phone) {
         try {
-            User user = getByEmail(email);
+            User user = getByPhone(phone);
             UserStatus status = userStatusRepository.findById(user.getId())
                     .orElse(UserStatus.builder().user(user).build());
             status.setPresence("ONLINE");
@@ -104,9 +116,9 @@ public class UserService {
     }
 
     @Transactional
-    public void setUserOffline(String email) {
+    public void setUserOffline(String phone) {
         try {
-            User user = getByEmail(email);
+            User user = getByPhone(phone);
             UserStatus status = userStatusRepository.findById(user.getId())
                     .orElse(UserStatus.builder().user(user).build());
             status.setPresence("OFFLINE");

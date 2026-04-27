@@ -1,12 +1,12 @@
 import api from './axiosInstance'
 
 export const authApi = {
-  signup: (email: string, displayName: string) =>
-    api.post('/auth/signup', { email, displayName }),
+  signup: (countryCode: string, phoneNumber: string, displayName: string, email?: string) =>
+    api.post('/auth/signup', { countryCode, phoneNumber, displayName, email }),
 
-  login: (email: string) =>
-    api.post('/auth/login', { email }),
+  login: (countryCode: string, phoneNumber: string) =>
+    api.post('/auth/login', { countryCode, phoneNumber }),
 
-  verifyOtp: (email: string, otp: string, purpose: string) =>
-    api.post('/auth/verify-otp', { email, otp, purpose }),
+  verifyOtp: (phone: string, otp: string, purpose: string) =>
+    api.post('/auth/verify-otp', { phone, otp, purpose }),
 }

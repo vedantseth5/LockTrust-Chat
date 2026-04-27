@@ -24,7 +24,7 @@ export default function NewDmModal({ open, onClose }: Props) {
   const filtered = allUsers.filter(u =>
     u.id !== currentUser?.id &&
     (u.displayName.toLowerCase().includes(search.toLowerCase()) ||
-     u.email.toLowerCase().includes(search.toLowerCase()))
+      (u.email || '').toLowerCase().includes(search.toLowerCase()))
   )
 
   function toggle(id: number) {
@@ -89,7 +89,7 @@ export default function NewDmModal({ open, onClose }: Props) {
               <UserAvatar displayName={user.displayName} avatarColor={user.avatarColor} size="sm" presence={user.presence} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 truncate">{user.displayName}</div>
-                <div className="text-xs text-gray-400 truncate">{user.email}</div>
+                <div className="text-xs text-gray-400 truncate">{user.phone}</div>
               </div>
               {selected.includes(user.id) && (
                 <span className="text-brand-600 font-bold text-lg">✓</span>

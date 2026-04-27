@@ -4,24 +4,40 @@ import toast from 'react-hot-toast'
 import { User, Channel, DmConversation, Message, DirectMessage } from '../types'
 
 type Tab = 'users' | 'channels' | 'dms'
-type LoginStep = 'email' | 'otp'
+type LoginStep = 'phone' | 'otp'
+
+const COUNTRY_CODES = [
+  { label: '🇺🇸 +1',   value: '+1'  },
+  { label: '🇬🇧 +44',  value: '+44' },
+  { label: '🇮🇳 +91',  value: '+91' },
+  { label: '🇦🇺 +61',  value: '+61' },
+  { label: '🇩🇪 +49',  value: '+49' },
+  { label: '🇫🇷 +33',  value: '+33' },
+  { label: '🇸🇬 +65',  value: '+65' },
+  { label: '🇦🇪 +971', value: '+971'},
+  { label: '🇯🇵 +81',  value: '+81' },
+]
 
 const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+const selectCls = "bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition flex-shrink-0"
 const btnPrimary = "w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm"
 
 // ── Admin login ───────────────────────────────────────────────────────────────
 
 function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
-  const [step, setStep] = useState<LoginStep>('email')
-  const [email, setEmail] = useState('')
+  const [step, setStep] = useState<LoginStep>('phone')
+  const [cc, setCc] = useState('+1')
+  const [phoneNum, setPhoneNum] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleEmail(e: React.FormEvent) {
+  const fullPhone = cc + phoneNum.replace(/[^0-9]/g, '')
+
+  async function handlePhone(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      await adminApi.login(email)
+      await adminApi.login(cc, phoneNum)
       setStep('otp')
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to send OTP')
@@ -32,11 +48,11 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await adminApi.verifyOtp(email, otp)
+      const res = await adminApi.verifyOtp(fullPhone, otp)
       const { accessToken, user } = res.data
       if (user?.role !== 'ADMIN') { toast.error('Not an admin account'); return }
       sessionStorage.setItem('lt_admin_token', accessToken)
-      sessionStorage.setItem('lt_admin_email', email)
+      sessionStorage.setItem('lt_admin_phone', fullPhone)
       onSuccess()
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Invalid OTP')
@@ -58,15 +74,22 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
             <img src="/logo.png" alt="LockTrust" className="w-10 h-10 object-contain" />
             <span className="text-2xl font-bold text-gray-900">LockTrust</span>
           </div>
-          {step === 'email' ? (
-            <form onSubmit={handleEmail}>
+          {step === 'phone' ? (
+            <form onSubmit={handlePhone}>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Admin sign in</h2>
-              <p className="text-gray-400 text-sm mb-7">We'll send a one-time code to your email</p>
+              <p className="text-gray-400 text-sm mb-7">We'll send a one-time code to your phone</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Admin email</label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@locktrust.com" required autoFocus className={inputCls} />
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Admin phone</label>
+                  <div className="flex gap-2">
+                    <select value={cc} onChange={e => setCc(e.target.value)} className={selectCls}>
+                      {COUNTRY_CODES.map((c, i) => (
+                        <option key={i} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                    <input type="tel" value={phoneNum} onChange={e => setPhoneNum(e.target.value)}
+                      placeholder="0000000000" required autoFocus className={inputCls} />
+                  </div>
                 </div>
                 <button type="submit" disabled={loading} className={btnPrimary}>
                   {loading ? 'Sending OTP…' : 'Send OTP →'}
@@ -75,13 +98,13 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
             </form>
           ) : (
             <form onSubmit={handleOtp}>
-              <button type="button" onClick={() => setStep('email')}
+              <button type="button" onClick={() => setStep('phone')}
                 className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-6 transition-colors">
                 ← Back
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Check your email</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Check your phone</h2>
               <p className="text-gray-400 text-sm mb-1">We sent a 6-digit code to</p>
-              <p className="text-gray-900 font-semibold text-sm mb-7">{email}</p>
+              <p className="text-gray-900 font-semibold text-sm mb-7">{fullPhone}</p>
               <div className="mb-2">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">One-time code</label>
                 <input type="text" value={otp}
@@ -93,7 +116,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               <button type="submit" disabled={loading || otp.length !== 6} className={btnPrimary}>
                 {loading ? 'Verifying…' : 'Verify & continue →'}
               </button>
-              <button type="button" onClick={() => adminApi.login(email).then(() => toast.success('OTP resent!'))}
+              <button type="button" onClick={() => adminApi.login(cc, phoneNum).then(() => toast.success('OTP resent!'))}
                 className="w-full text-sm text-brand-500 hover:text-brand-600 font-medium mt-4 transition-colors">
                 Resend code
               </button>
@@ -198,7 +221,7 @@ function GlobalSearch({ onGoToChannel, onGoToDm }: {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">{u.displayName}</p>
-                        <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                        <p className="text-xs text-gray-400 truncate">{u.phone}</p>
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                         u.presence === 'ONLINE' ? 'bg-green-100 text-green-600' :
@@ -298,7 +321,7 @@ function highlight(text: string, q: string) {
 // ── Admin shell ───────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const [adminEmail, setAdminEmail] = useState<string | null>(sessionStorage.getItem('lt_admin_email'))
+  const [adminPhone, setAdminPhone] = useState<string | null>(sessionStorage.getItem('lt_admin_phone'))
   const [loggedIn, setLoggedIn] = useState(!!sessionStorage.getItem('lt_admin_token'))
   const [tab, setTab] = useState<Tab>('users')
   const [jumpToChannelId, setJumpToChannelId] = useState<number | null>(null)
@@ -306,12 +329,12 @@ export default function AdminPage() {
 
   function handleLogout() {
     sessionStorage.removeItem('lt_admin_token')
-    sessionStorage.removeItem('lt_admin_email')
-    setLoggedIn(false); setAdminEmail(null)
+    sessionStorage.removeItem('lt_admin_phone')
+    setLoggedIn(false); setAdminPhone(null)
   }
 
   function handleSuccess() {
-    setAdminEmail(sessionStorage.getItem('lt_admin_email'))
+    setAdminPhone(sessionStorage.getItem('lt_admin_phone'))
     setLoggedIn(true)
   }
 
@@ -345,9 +368,9 @@ export default function AdminPage() {
           ))}
         </nav>
 
-        {/* Bottom: signed-in email + sign out */}
+        {/* Bottom: signed-in phone + sign out */}
         <div className="px-4 py-3 border-t flex-shrink-0" style={{ borderColor: '#1e2d3d' }}>
-          <p className="text-[#c9d4df] text-xs truncate mb-1">{adminEmail}</p>
+          <p className="text-[#c9d4df] text-xs truncate mb-1">{adminPhone}</p>
           <button onClick={handleLogout} className="text-xs text-[#6b7e94] hover:text-white transition">
             Sign out
           </button>
@@ -398,7 +421,7 @@ function UsersTab() {
           <thead>
             <tr className="border-b border-gray-100 text-gray-400 text-xs uppercase tracking-wider">
               <th className="text-left px-5 py-3">Name</th>
-              <th className="text-left px-5 py-3">Email</th>
+              <th className="text-left px-5 py-3">Phone</th>
               <th className="text-left px-5 py-3">Role</th>
               <th className="text-left px-5 py-3">Status</th>
               <th className="text-left px-5 py-3">Joined</th>
@@ -416,7 +439,7 @@ function UsersTab() {
                     <span className="text-gray-900 font-medium">{u.displayName}</span>
                   </div>
                 </td>
-                <td className="px-5 py-3 text-gray-600">{u.email}</td>
+                <td className="px-5 py-3 text-gray-600">{u.phone}</td>
                 <td className="px-5 py-3">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     u.role === 'ADMIN' ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-gray-100 text-gray-500'

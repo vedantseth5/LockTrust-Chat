@@ -1,0 +1,551 @@
+{
+  "info": {
+    "name": "LockTrust Chat",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/signup", "host": ["{{baseUrl}}"], "path": ["auth", "signup"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryCode\": \"\",\n  \"phoneNumber\": \"\",\n  \"displayName\": \"\",\n  \"email\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// After verifying OTP, set token via the Verify OTP request instead"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryCode\": \"\",\n  \"phoneNumber\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.environment.set('token', res.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["auth", "verify-otp"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"\",\n  \"otp\": \"\",\n  \"purpose\": \"\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/search?q=",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "search"],
+              "query": [{ "key": "q", "value": "" }]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/me/profile", "host": ["{{baseUrl}}"], "path": ["users", "me", "profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"\",\n  \"email\": \"\",\n  \"title\": \"\",\n  \"timezone\": \"\",\n  \"avatarColor\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/me/status", "host": ["{{baseUrl}}"], "path": ["users", "me", "status"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presence\": \"\",\n  \"customMessage\": \"\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Channels",
+      "item": [
+        {
+          "name": "Get Channels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels", "host": ["{{baseUrl}}"], "path": ["channels"] }
+          }
+        },
+        {
+          "name": "Create Channel",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/channels", "host": ["{{baseUrl}}"], "path": ["channels"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"description\": \"\",\n  \"isPrivate\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Channel by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}"] }
+          }
+        },
+        {
+          "name": "Join Channel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/join", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "join"] }
+          }
+        },
+        {
+          "name": "Leave Channel",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/leave", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "leave"] }
+          }
+        },
+        {
+          "name": "Get Channel Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/members", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "members"] }
+          }
+        },
+        {
+          "name": "Add Member to Channel",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/members", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "members"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Get Channel Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/channels/{{channelId}}/messages?page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["channels", "{{channelId}}", "messages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/messages", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "messages"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Edit Message",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/messages/{{messageId}}", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "messages", "{{messageId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/messages/{{messageId}}", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "messages", "{{messageId}}"] }
+          }
+        },
+        {
+          "name": "Get Thread Replies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/messages/{{messageId}}/replies", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "messages", "{{messageId}}", "replies"] }
+          }
+        },
+        {
+          "name": "Add Thread Reply",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/channels/{{channelId}}/messages/{{messageId}}/replies", "host": ["{{baseUrl}}"], "path": ["channels", "{{channelId}}", "messages", "{{messageId}}", "replies"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reactions",
+      "item": [
+        {
+          "name": "Toggle Message Reaction",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/messages/{{messageId}}/reactions", "host": ["{{baseUrl}}"], "path": ["messages", "{{messageId}}", "reactions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emoji\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle Thread Reply Reaction",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/replies/{{replyId}}/reactions", "host": ["{{baseUrl}}"], "path": ["replies", "{{replyId}}", "reactions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emoji\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle DM Reaction",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/dm/messages/{{dmMessageId}}/reactions", "host": ["{{baseUrl}}"], "path": ["dm", "messages", "{{dmMessageId}}", "reactions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emoji\": \"\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct Messages",
+      "item": [
+        {
+          "name": "Get Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/dm/conversations", "host": ["{{baseUrl}}"], "path": ["dm", "conversations"] }
+          }
+        },
+        {
+          "name": "Create or Get Conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/dm/conversations", "host": ["{{baseUrl}}"], "path": ["dm", "conversations"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantIds\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Get DM Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dm/conversations/{{dmConversationId}}/messages?page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["dm", "conversations", "{{dmConversationId}}", "messages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send DM",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/dm/conversations/{{dmConversationId}}/messages", "host": ["{{baseUrl}}"], "path": ["dm", "conversations", "{{dmConversationId}}", "messages"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Edit DM",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/dm/conversations/{{dmConversationId}}/messages/{{dmMessageId}}", "host": ["{{baseUrl}}"], "path": ["dm", "conversations", "{{dmConversationId}}", "messages", "{{dmMessageId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete DM",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/dm/conversations/{{dmConversationId}}/messages/{{dmMessageId}}", "host": ["{{baseUrl}}"], "path": ["dm", "conversations", "{{dmConversationId}}", "messages", "{{dmMessageId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/search?q=",
+              "host": ["{{baseUrl}}"],
+              "path": ["search"],
+              "query": [{ "key": "q", "value": "" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin", "users"] }
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/admin/users/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["admin", "users", "{{userId}}", "role"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Channels",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/admin/channels", "host": ["{{baseUrl}}"], "path": ["admin", "channels"] }
+          }
+        },
+        {
+          "name": "Get Channel Messages (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/channels/{{channelId}}/messages?page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "channels", "{{channelId}}", "messages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List DM Conversations (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/admin/dm/conversations", "host": ["{{baseUrl}}"], "path": ["admin", "dm", "conversations"] }
+          }
+        },
+        {
+          "name": "Get DM Messages (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dm/conversations/{{dmConversationId}}/messages?page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "dm", "conversations", "{{dmConversationId}}", "messages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Search",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/search?q=",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "search"],
+              "query": [{ "key": "q", "value": "" }]
+            }
+          }
+        },
+        {
+          "name": "Get User Activity (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/admin/users/{{userId}}/activity", "host": ["{{baseUrl}}"], "path": ["admin", "users", "{{userId}}", "activity"] }
+          }
+        }
+      ]
+    }
+  ]
+}

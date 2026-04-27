@@ -25,7 +25,7 @@ public class ChannelController {
     public ResponseEntity<List<ChannelResponse>> getChannels(@AuthenticationPrincipal UserDetails userDetails) {
         var user = userDetails; // get id via service
         return ResponseEntity.ok(channelService.getVisibleChannels(
-                channelService.getUserIdByEmail(userDetails.getUsername())));
+                channelService.getUserIdByIdentifier(userDetails.getUsername())));
     }
 
     @PostMapping

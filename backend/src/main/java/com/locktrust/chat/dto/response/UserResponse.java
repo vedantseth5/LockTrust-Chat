@@ -7,12 +7,12 @@ import java.time.LocalDateTime;
 @Data
 public class UserResponse {
     private Long id;
+    private String phone;
     private String email;
     private String displayName;
     private String role;
     private String avatarColor;
     private String title;
-    private String phone;
     private String timezone;
     private String presence;
     private String customStatusMessage;
@@ -21,12 +21,12 @@ public class UserResponse {
     public static UserResponse from(User user) {
         UserResponse r = new UserResponse();
         r.setId(user.getId());
+        r.setPhone(user.getPhone());
         r.setEmail(user.getEmail());
         r.setDisplayName(user.getDisplayName());
         r.setRole(user.getRole());
         r.setAvatarColor(user.getAvatarColor());
         r.setTitle(user.getTitle());
-        r.setPhone(user.getPhone());
         r.setTimezone(user.getTimezone());
         r.setCreatedAt(user.getCreatedAt());
         if (user.getStatus() != null) {

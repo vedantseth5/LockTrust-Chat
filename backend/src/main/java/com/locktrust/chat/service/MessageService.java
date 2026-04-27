@@ -42,7 +42,7 @@ public class MessageService {
     public MessageResponse sendMessage(Long channelId, String senderEmail, SendMessageRequest request) {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new RuntimeException("Channel not found"));
-        User sender = userService.getByEmail(senderEmail);
+        User sender = userService.getByIdentifier(senderEmail);
 
         Message message = Message.builder()
                 .channel(channel)
@@ -68,7 +68,7 @@ public class MessageService {
     public MessageResponse editMessage(Long messageId, String editorEmail, SendMessageRequest request) {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User editor = userService.getByEmail(editorEmail);
+        User editor = userService.getByIdentifier(editorEmail);
 
         if (!message.getSender().getId().equals(editor.getId())) {
             throw new RuntimeException("You can only edit your own messages.");
@@ -92,7 +92,7 @@ public class MessageService {
     public void deleteMessage(Long messageId, String deleterEmail) {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User deleter = userService.getByEmail(deleterEmail);
+        User deleter = userService.getByIdentifier(deleterEmail);
 
         boolean isAdmin = "ADMIN".equals(deleter.getRole());
         if (!message.getSender().getId().equals(deleter.getId()) && !isAdmin) {
@@ -121,7 +121,7 @@ public class MessageService {
     public ThreadReplyResponse addReply(Long messageId, String senderEmail, SendMessageRequest request) {
         Message parent = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
-        User sender = userService.getByEmail(senderEmail);
+        User sender = userService.getByIdentifier(senderEmail);
 
         ThreadReply reply = ThreadReply.builder()
                 .parentMessage(parent)
@@ -158,7 +158,10 @@ public class MessageService {
                         payload.put("mentionedByName", message.getSender().getDisplayName());
                         payload.put("preview", message.getContent().substring(0, Math.min(100, message.getContent().length())));
                         notif.put("payload", payload);
-                        messagingTemplate.convertAndSendToUser(u.getEmail(), "/queue/notifications", notif);
+                        messagingTemplate.convertAndSendToUser(
+                                u.getPhone(),
+                                "/queue/notifications",
+                                notif);
                     });
         }
     }

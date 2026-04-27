@@ -7,6 +7,6 @@ export const userApi = {
   search: (q: string) => api.get('/users/search', { params: { q } }),
   updateStatus: (presence: string, customMessage?: string) =>
     api.put('/users/me/status', { presence, customMessage }),
-  updateProfile: (data: { displayName?: string; title?: string; phone?: string; timezone?: string; avatarColor?: string }) =>
+  updateProfile: (data: { displayName?: string; email?: string; title?: string; timezone?: string; avatarColor?: string }) =>
     api.put('/users/me/profile', data),
 }

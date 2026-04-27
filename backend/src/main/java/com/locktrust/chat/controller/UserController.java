@@ -21,7 +21,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(UserResponse.from(userService.getByEmail(userDetails.getUsername())));
+        return ResponseEntity.ok(UserResponse.from(userService.getByIdentifier(userDetails.getUsername())));
     }
 
     @GetMapping

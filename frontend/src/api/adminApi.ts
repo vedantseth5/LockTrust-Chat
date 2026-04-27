@@ -2,9 +2,10 @@ import api from './adminAxios'
 import axios from 'axios'
 
 export const adminApi = {
-  login: (email: string) => axios.post('/api/auth/login', { email }),
-  verifyOtp: (email: string, otp: string) =>
-    axios.post('/api/auth/verify-otp', { email, otp, purpose: 'LOGIN' }),
+  login: (countryCode: string, phoneNumber: string) =>
+    axios.post('/api/auth/login', { countryCode, phoneNumber }),
+  verifyOtp: (phone: string, otp: string) =>
+    axios.post('/api/auth/verify-otp', { phone, otp, purpose: 'LOGIN' }),
 
   listUsers: () => api.get('/admin/users'),
   updateRole: (id: number, role: string) => api.put(`/admin/users/${id}/role`, { role }),

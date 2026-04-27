@@ -25,9 +25,9 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(String email, Long userId) {
+    public String generateAccessToken(String phone, Long userId) {
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(phone)
                 .claim("userId", userId)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
@@ -45,7 +45,7 @@ public class JwtTokenProvider {
         }
     }
 
-    public String getEmailFromToken(String token) {
+    public String getPhoneFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()

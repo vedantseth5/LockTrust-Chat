@@ -14,7 +14,7 @@ public class OtpToken {
     private Long id;
 
     @Column(nullable = false)
-    private String email;
+    private String phone;
 
     @Column(nullable = false)
     private String otp;

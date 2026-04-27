@@ -37,7 +37,7 @@ public class AdminController {
     private final DirectMessageRepository directMessageRepository;
 
     private void requireAdmin(UserDetails principal) {
-        User caller = userRepository.findByEmail(principal.getUsername())
+        User caller = userRepository.findByPhone(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
         if (!"ADMIN".equals(caller.getRole())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
@@ -115,7 +115,8 @@ public class AdminController {
 
         List<UserResponse> users = userRepository.findAll().stream()
                 .filter(u -> u.getDisplayName().toLowerCase().contains(q.toLowerCase())
-                          || u.getEmail().toLowerCase().contains(q.toLowerCase()))
+                        || u.getPhone().contains(q)
+                        || (u.getEmail() != null && u.getEmail().toLowerCase().contains(q.toLowerCase())))
                 .limit(20).map(UserResponse::from).collect(Collectors.toList());
 
         return ResponseEntity.ok(Map.of("messages", messages, "dms", dms, "users", users));

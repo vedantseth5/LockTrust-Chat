@@ -42,8 +42,8 @@ export default function StatusModal({ open, onClose }: Props) {
   )
   const [customMessage, setCustomMessage] = useState(user?.customStatusMessage ?? '')
   const [displayName, setDisplayName] = useState(user?.displayName || '')
+  const [email, setEmail] = useState(user?.email || '')
   const [title, setTitle] = useState(user?.title || '')
-  const [phone, setPhone] = useState(user?.phone || '')
   const [timezone, setTimezone] = useState(user?.timezone || 'UTC')
   const [avatarColor, setAvatarColor] = useState(user?.avatarColor || '#0099CC')
   const [savingProfile, setSavingProfile] = useState(false)
@@ -53,7 +53,8 @@ export default function StatusModal({ open, onClose }: Props) {
   useEffect(() => {
     if (user?.presence) setPresence(user.presence as 'ONLINE' | 'AWAY' | 'DND' | 'OFFLINE')
     if (user?.customStatusMessage !== undefined) setCustomMessage(user.customStatusMessage || '')
-  }, [user?.presence, user?.customStatusMessage])
+    if (user?.email !== undefined) setEmail(user.email || '')
+  }, [user?.presence, user?.customStatusMessage, user?.email])
 
   if (!open || !user) return null
 
@@ -82,7 +83,7 @@ export default function StatusModal({ open, onClose }: Props) {
   async function handleSaveProfile() {
     setSavingProfile(true)
     try {
-      const res = await userApi.updateProfile({ displayName, title, phone, timezone, avatarColor })
+      const res = await userApi.updateProfile({ displayName, email, title, timezone, avatarColor })
       dispatch(updateUser(res.data))
       toast.success('Profile updated')
       onClose()
@@ -206,18 +207,21 @@ export default function StatusModal({ open, onClose }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Email</label>
-              <input type="text" value={user.email} disabled className={inputCls + ' bg-gray-50 text-gray-400 cursor-not-allowed'} />
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Phone</label>
+              <input type="text" value={user?.phone || ''} disabled
+                className={inputCls + " opacity-50 cursor-not-allowed"} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                Email <span className="text-gray-400 font-normal normal-case">(optional)</span>
+              </label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com" className={inputCls} />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Job title</label>
               <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Senior Engineer" className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Phone</label>
-              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 000 0000" className={inputCls} />
             </div>
 
             <div>

@@ -101,7 +101,8 @@ export default function ProfileCard({ user, anchorRef, onClose }: Props) {
         )}
 
         <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
-          <p className="text-xs text-gray-400">{user.email}</p>
+          <p className="text-xs text-gray-400">{user.phone}</p>
+          {user.email && <p className="text-xs text-gray-400">{user.email}</p>}
           {user.timezone && user.timezone !== 'UTC' && (
             <p className="text-xs text-gray-400">🕐 {user.timezone}</p>
           )}
