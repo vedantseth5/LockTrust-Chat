@@ -1,139 +1,577 @@
-# LockTrust Chat — Postman Collection
 
-## Setup
+## Auth
 
-1. Import both files into Postman: `LockTrust-Chat.postman_collection.json` and `LockTrust-Environment.postman_environment.json`
-2. Select the **LockTrust Chat** environment from the top-right dropdown
-3. Make sure the backend is running on `http://localhost:8080`
-
----
-
-## Authentication Flow
-
-All protected endpoints require a Bearer token. The collection uses `{{token}}` automatically — you just need to populate it once by completing the login flow below.
-
-### To log in as a regular user:
-1. **Signup** — provide `countryCode` (e.g. `+1`), `phoneNumber`, `displayName`, and optionally `email`
-2. **Login** — provide `countryCode` and `phoneNumber` to request an OTP
-3. **Verify OTP** — provide the `phone` (full number e.g. `+15551234567`), `otp` (`123456` in dev), and `purpose` (`SIGNUP` or `LOGIN`). On success, `{{token}}` is **automatically saved** to the environment.
-
-### To log in as admin:
-- Admin phone is `+10000000000`, OTP is `123456`
-- After Verify OTP, **manually copy** the `accessToken` from the response and paste it into the `adminToken` environment variable
-- Admin endpoints use `{{adminToken}}` separately so you can test both roles at the same time
+### POST /auth/signup
+Creates account and sends OTP to backend terminal.
+```bash
+curl -X POST http://localhost:8080/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"countryCode":"+1","phoneNumber":"5551234567","displayName":"Alice Smith","email":"alice@example.com"}'
+```
+```json
+{ "message": "OTP sent. Check the backend logs (dev mode)." }
+```
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|---|---|
-| `baseUrl` | Backend base URL — `http://localhost:8080/api` |
-| `token` | JWT for the logged-in regular user — auto-set by Verify OTP |
-| `adminToken` | JWT for the admin user — set manually |
-| `channelId` | ID of a channel — copy from any channel response |
-| `messageId` | ID of a channel message — copy from any message response |
-| `replyId` | ID of a thread reply — copy from any reply response |
-| `dmConversationId` | ID of a DM conversation — copy from any DM conversation response |
-| `dmMessageId` | ID of a DM message — copy from any DM message response |
-| `userId` | ID of a user — copy from any user response |
+### POST /auth/login
+Sends OTP for an existing verified account.
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"countryCode":"+1","phoneNumber":"5551234567"}'
+```
+```json
+{ "message": "OTP sent. Check the backend logs (dev mode)." }
+```
 
 ---
 
-## API Reference
-
-### Auth
-
-| Request | Method | What it does |
-|---|---|---|
-| Signup | POST `/auth/signup` | Creates a new unverified account with phone + display name. Email is optional. Sends OTP (check backend terminal). |
-| Login | POST `/auth/login` | Sends an OTP to the given phone number for an existing verified account. |
-| Verify OTP | POST `/auth/verify-otp` | Confirms the OTP. On success returns a JWT token and user object. Set `purpose` to `SIGNUP` for first-time verification or `LOGIN` for subsequent logins. |
-
----
-
-### Users
-
-| Request | Method | What it does |
-|---|---|---|
-| Get Me | GET `/users/me` | Returns the currently authenticated user's profile. |
-| Get All Users | GET `/users` | Returns all verified users in the workspace. |
-| Get User by ID | GET `/users/{{userId}}` | Returns a single user's profile by their ID. |
-| Search Users | GET `/users/search?q=` | Searches users by display name, phone number, or email. |
-| Update Profile | PUT `/users/me/profile` | Updates the authenticated user's display name, email, job title, timezone, or avatar color. Phone cannot be changed. |
-| Update Status | PUT `/users/me/status` | Sets the user's presence (`ONLINE`, `AWAY`, `DND`, `OFFLINE`) and optional custom status message. |
-
----
-
-### Channels
-
-| Request | Method | What it does |
-|---|---|---|
-| Get Channels | GET `/channels` | Returns all channels visible to the authenticated user (public channels + private channels they are a member of). |
-| Create Channel | POST `/channels` | Creates a new channel. Set `isPrivate: true` for a private channel. |
-| Get Channel by ID | GET `/channels/{{channelId}}` | Returns details of a specific channel. |
-| Join Channel | POST `/channels/{{channelId}}/join` | Adds the authenticated user to a public channel. |
-| Leave Channel | DELETE `/channels/{{channelId}}/leave` | Removes the authenticated user from a channel. |
-| Get Channel Members | GET `/channels/{{channelId}}/members` | Returns the list of members in a channel. |
-| Add Member to Channel | POST `/channels/{{channelId}}/members` | Adds another user (by `userId`) to a channel. Used for inviting people to private channels. |
+### POST /auth/verify-otp
+Verifies OTP and returns JWT. `purpose` is `SIGNUP` or `LOGIN`.
+```bash
+curl -X POST http://localhost:8080/api/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"+15551234567","otp":"123456","purpose":"LOGIN"}'
+```
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "id": 1,
+    "phone": "+15551234567",
+    "email": "alice@example.com",
+    "displayName": "Alice Smith",
+    "role": "MEMBER",
+    "avatarColor": "#42A5F5",
+    "title": null,
+    "timezone": "UTC",
+    "presence": "OFFLINE",
+    "customStatusMessage": null,
+    "createdAt": "2025-04-27T10:00:00"
+  },
+  "message": "Authentication successful."
+}
+```
 
 ---
 
-### Messages
+### Admin login
+Admin phone is `+10000000000`, OTP is `123456`.
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"countryCode":"+1","phoneNumber":"0000000000"}'
 
-| Request | Method | What it does |
-|---|---|---|
-| Get Channel Messages | GET `/channels/{{channelId}}/messages` | Returns paginated messages for a channel. Use `page` and `size` query params. |
-| Send Message | POST `/channels/{{channelId}}/messages` | Sends a message to a channel. |
-| Edit Message | PUT `/channels/{{channelId}}/messages/{{messageId}}` | Edits the content of an existing message. Only the sender can edit. |
-| Delete Message | DELETE `/channels/{{channelId}}/messages/{{messageId}}` | Soft-deletes a message. Only the sender can delete. |
-| Get Thread Replies | GET `/channels/{{channelId}}/messages/{{messageId}}/replies` | Returns all replies in a message thread. |
-| Add Thread Reply | POST `/channels/{{channelId}}/messages/{{messageId}}/replies` | Posts a reply in a message thread. |
-
----
-
-### Reactions
-
-| Request | Method | What it does |
-|---|---|---|
-| Toggle Message Reaction | POST `/messages/{{messageId}}/reactions` | Adds or removes an emoji reaction on a channel message. Send `emoji` in the body (e.g. `"👍"`). Calling it again with the same emoji removes the reaction. |
-| Toggle Thread Reply Reaction | POST `/replies/{{replyId}}/reactions` | Adds or removes an emoji reaction on a thread reply. |
-| Toggle DM Reaction | POST `/dm/messages/{{dmMessageId}}/reactions` | Adds or removes an emoji reaction on a direct message. |
+curl -X POST http://localhost:8080/api/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"+10000000000","otp":"123456","purpose":"LOGIN"}'
+```
 
 ---
 
-### Direct Messages
+## Users
 
-| Request | Method | What it does |
-|---|---|---|
-| Get Conversations | GET `/dm/conversations` | Returns all DM conversations the authenticated user is part of. |
-| Create or Get Conversation | POST `/dm/conversations` | Creates a new DM conversation with the given `participantIds` array. If a conversation with those exact participants already exists, returns the existing one. |
-| Get DM Messages | GET `/dm/conversations/{{dmConversationId}}/messages` | Returns paginated messages for a DM conversation. |
-| Send DM | POST `/dm/conversations/{{dmConversationId}}/messages` | Sends a message in a DM conversation. |
-| Edit DM | PUT `/dm/conversations/{{dmConversationId}}/messages/{{dmMessageId}}` | Edits a DM message. Only the sender can edit. |
-| Delete DM | DELETE `/dm/conversations/{{dmConversationId}}/messages/{{dmMessageId}}` | Soft-deletes a DM message. Only the sender can delete. |
-
----
-
-### Search
-
-| Request | Method | What it does |
-|---|---|---|
-| Search | GET `/search?q=` | Searches across channel messages and channels visible to the authenticated user. Returns grouped results. |
+### GET /users/me
+```bash
+curl http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{
+  "id": 1, "phone": "+15551234567", "email": "alice@example.com",
+  "displayName": "Alice Smith", "role": "MEMBER", "avatarColor": "#42A5F5",
+  "title": null, "timezone": "UTC", "presence": "ONLINE",
+  "customStatusMessage": null, "createdAt": "2025-04-27T10:00:00"
+}
+```
 
 ---
 
-### Admin
+### GET /users
+Returns all verified users.
+```bash
+curl http://localhost:8080/api/users \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  { "id": 1, "phone": "+15551234567", "displayName": "Alice Smith", "role": "MEMBER", "presence": "ONLINE", "..." : "..." },
+  { "id": 2, "phone": "+15559876543", "displayName": "Bob Jones",  "role": "MEMBER", "presence": "OFFLINE", "...": "..." }
+]
+```
 
-All admin endpoints require `{{adminToken}}`. The admin account is identified by phone `+10000000000`.
+---
 
-| Request | Method | What it does |
-|---|---|---|
-| List Users | GET `/admin/users` | Returns all users including unverified accounts. |
-| Update User Role | PUT `/admin/users/{{userId}}/role` | Changes a user's role. Valid values: `ADMIN` or `MEMBER`. |
-| List Channels | GET `/admin/channels` | Returns all channels in the workspace. |
-| Get Channel Messages (Admin) | GET `/admin/channels/{{channelId}}/messages` | Returns paginated messages for any channel regardless of membership. |
-| List DM Conversations (Admin) | GET `/admin/dm/conversations` | Returns all DM conversations in the workspace. |
-| Get DM Messages (Admin) | GET `/admin/dm/conversations/{{dmConversationId}}/messages` | Returns paginated messages for any DM conversation. |
-| Admin Search | GET `/admin/search?q=` | Searches across all channel messages, DMs, and users workspace-wide. |
-| Get User Activity (Admin) | GET `/admin/users/{{userId}}/activity` | Returns a summary of a user's messages, DMs, and channel memberships. |
+### GET /users/{id}
+```bash
+curl http://localhost:8080/api/users/1 \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{ "id": 1, "phone": "+15551234567", "displayName": "Alice Smith", "..." : "..." }
+```
+
+---
+
+### GET /users/search?q=Alice
+Do **not** wrap the value in quotes. `?q=Alice` not `?q="Alice"`.
+```bash
+curl "http://localhost:8080/api/users/search?q=Alice" \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  { "id": 1, "phone": "+15551234567", "displayName": "Alice Smith", "presence": "ONLINE", "...": "..." }
+]
+```
+
+---
+
+### PUT /users/me/profile
+All fields optional.
+```bash
+curl -X PUT http://localhost:8080/api/users/me/profile \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"displayName":"Alice S.","email":"alice@company.com","title":"Engineer","timezone":"America/New_York","avatarColor":"#7E57C2"}'
+```
+```json
+{ "id": 1, "phone": "+15551234567", "displayName": "Alice S.", "title": "Engineer", "...": "..." }
+```
+
+---
+
+### PUT /users/me/status
+`presence` values: `ONLINE` `AWAY` `DND` `OFFLINE`
+```bash
+curl -X PUT http://localhost:8080/api/users/me/status \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"presence":"AWAY","customMessage":"In a meeting"}'
+```
+```json
+{ "id": 1, "presence": "AWAY", "customStatusMessage": "In a meeting", "...": "..." }
+```
+
+---
+
+## Channels
+
+### GET /channels
+```bash
+curl http://localhost:8080/api/channels \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  { "id": 1, "name": "general", "description": "General discussion", "isPrivate": false, "memberCount": 5, "memberIds": [1,2,3,4,5], "createdAt": "2025-04-27T10:00:00" }
+]
+```
+
+---
+
+### POST /channels
+```bash
+curl -X POST http://localhost:8080/api/channels \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"design","description":"Design team","isPrivate":false}'
+```
+```json
+{ "id": 3, "name": "design", "description": "Design team", "isPrivate": false, "memberCount": 1, "memberIds": [1], "createdAt": "2025-04-27T11:00:00" }
+```
+
+---
+
+### POST /channels/{id}/join
+```bash
+curl -X POST http://localhost:8080/api/channels/3/join \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{ "id": 3, "name": "design", "memberCount": 2, "memberIds": [1,2], "..." : "..." }
+```
+
+---
+
+### DELETE /channels/{id}/leave
+```bash
+curl -X DELETE http://localhost:8080/api/channels/3/leave \
+  -H "Authorization: Bearer {{token}}"
+```
+`200 OK` (empty body)
+
+---
+
+### GET /channels/{id}/members
+```bash
+curl http://localhost:8080/api/channels/1/members \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  { "id": 1, "phone": "+15551234567", "displayName": "Alice Smith", "...": "..." }
+]
+```
+
+---
+
+### POST /channels/{id}/members
+Invite another user by their ID.
+```bash
+curl -X POST http://localhost:8080/api/channels/1/members \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":2}'
+```
+```json
+{ "id": 1, "name": "general", "memberCount": 6, "memberIds": [1,2,3,4,5,6], "...": "..." }
+```
+
+---
+
+## Messages
+
+### GET /channels/{channelId}/messages
+```bash
+curl "http://localhost:8080/api/channels/1/messages?page=0&size=50" \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{
+  "content": [
+    {
+      "id": 10, "channelId": 1, "senderId": 1, "senderName": "Alice Smith",
+      "senderAvatarColor": "#42A5F5", "content": "Hello team!",
+      "edited": false, "deleted": false, "replyCount": 2,
+      "reactions": [], "createdAt": "2025-04-27T10:05:00"
+    }
+  ],
+  "totalElements": 1, "totalPages": 1, "number": 0
+}
+```
+
+---
+
+### POST /channels/{channelId}/messages
+```bash
+curl -X POST http://localhost:8080/api/channels/1/messages \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hello team!"}'
+```
+```json
+{ "id": 10, "channelId": 1, "senderId": 1, "senderName": "Alice Smith", "content": "Hello team!", "edited": false, "reactions": [], "createdAt": "2025-04-27T10:05:00" }
+```
+
+---
+
+### PUT /channels/{channelId}/messages/{messageId}
+```bash
+curl -X PUT http://localhost:8080/api/channels/1/messages/10 \
+  -H "Axuthorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hello everyone!"}'
+```
+```json
+{ "id": 10, "content": "Hello everyone!", "edited": true, "...": "..." }
+```
+
+---
+
+### DELETE /channels/{channelId}/messages/{messageId}
+```bash
+curl -X DELETE http://localhost:8080/api/channels/1/messages/10 \
+  -H "Authorization: Bearer {{token}}"
+```
+`200 OK` (empty body)
+
+---
+
+### GET /channels/{channelId}/messages/{messageId}/replies
+```bash
+curl http://localhost:8080/api/channels/1/messages/10/replies \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  { "id": 5, "parentMessageId": 10, "senderId": 2, "senderName": "Bob Jones", "content": "Hi Alice!", "edited": false, "reactions": [], "createdAt": "2025-04-27T10:06:00" }
+]
+```
+
+---
+
+### POST /channels/{channelId}/messages/{messageId}/replies
+```bash
+curl -X POST http://localhost:8080/api/channels/1/messages/10/replies \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hi Alice!"}'
+```
+```json
+{ "id": 5, "parentMessageId": 10, "senderId": 2, "senderName": "Bob Jones", "content": "Hi Alice!", "reactions": [], "createdAt": "2025-04-27T10:06:00" }
+```
+
+---
+
+## Reactions
+
+Toggle adds if not present, removes if already there.
+
+### POST /messages/{messageId}/reactions
+```bash
+curl -X POST http://localhost:8080/api/messages/10/reactions \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"emoji":"👍"}'
+```
+`200 OK` (empty body)
+
+---
+
+### POST /replies/{replyId}/reactions
+```bash
+curl -X POST http://localhost:8080/api/replies/5/reactions \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"emoji":"❤️"}'
+```
+`200 OK` (empty body)
+
+---
+
+### POST /dm/messages/{dmMessageId}/reactions
+```bash
+curl -X POST http://localhost:8080/api/dm/messages/7/reactions \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"emoji":"😂"}'
+```
+```json
+{ "id": 7, "content": "Hey!", "reactions": [{ "emoji": "😂", "count": 1, "userIds": [1] }], "...": "..." }
+```
+
+---
+
+## Direct Messages
+
+### GET /dm/conversations
+```bash
+curl http://localhost:8080/api/dm/conversations \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+[
+  {
+    "id": 1, "isGroup": false, "name": null, "createdAt": "2025-04-27T10:00:00",
+    "participants": [
+      { "id": 1, "displayName": "Alice Smith", "phone": "+15551234567", "...": "..." },
+      { "id": 2, "displayName": "Bob Jones",   "phone": "+15559876543", "...": "..." }
+    ]
+  }
+]
+```
+
+---
+
+### POST /dm/conversations
+If a conversation with the same participants already exists, returns the existing one.
+```bash
+curl -X POST http://localhost:8080/api/dm/conversations \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"participantIds":[2]}'
+```
+```json
+{ "id": 1, "isGroup": false, "participants": [ { "id": 1, "...": "..." }, { "id": 2, "...": "..." } ], "createdAt": "2025-04-27T10:00:00" }
+```
+
+---
+
+### GET /dm/conversations/{id}/messages
+```bash
+curl "http://localhost:8080/api/dm/conversations/1/messages?page=0&size=50" \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{
+  "content": [
+    { "id": 7, "conversationId": 1, "senderId": 1, "senderName": "Alice Smith", "content": "Hey!", "edited": false, "deleted": false, "reactions": [], "createdAt": "2025-04-27T10:10:00" }
+  ],
+  "totalElements": 1, "totalPages": 1, "number": 0
+}
+```
+
+---
+
+### POST /dm/conversations/{id}/messages
+```bash
+curl -X POST http://localhost:8080/api/dm/conversations/1/messages \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hey!"}'
+```
+```json
+{ "id": 7, "conversationId": 1, "senderId": 1, "senderName": "Alice Smith", "content": "Hey!", "reactions": [], "createdAt": "2025-04-27T10:10:00" }
+```
+
+---
+
+### PUT /dm/conversations/{convId}/messages/{msgId}
+```bash
+curl -X PUT http://localhost:8080/api/dm/conversations/1/messages/7 \
+  -H "Authorization: Bearer {{token}}" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hey there!"}'
+```
+```json
+{ "id": 7, "content": "Hey there!", "edited": true, "...": "..." }
+```
+
+---
+
+### DELETE /dm/conversations/{convId}/messages/{msgId}
+```bash
+curl -X DELETE http://localhost:8080/api/dm/conversations/1/messages/7 \
+  -H "Authorization: Bearer {{token}}"
+```
+`200 OK` (empty body)
+
+---
+
+## Search
+
+### GET /search?q=hello
+Searches channel messages and channels visible to the user.
+```bash
+curl "http://localhost:8080/api/search?q=hello" \
+  -H "Authorization: Bearer {{token}}"
+```
+```json
+{
+  "messages": [
+    { "id": 10, "channelId": 1, "senderName": "Alice Smith", "content": "Hello team!", "...": "..." }
+  ],
+  "channels": [
+    { "id": 1, "name": "general", "...": "..." }
+  ],
+  "users": []
+}
+```
+
+---
+
+## Admin
+
+All admin requests use `{{adminToken}}`.
+
+### GET /admin/users
+```bash
+curl http://localhost:8080/api/admin/users \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+[
+  { "id": 1, "phone": "+15551234567", "displayName": "Alice Smith", "role": "MEMBER", "...": "..." },
+  { "id": 99, "phone": "+10000000000", "displayName": "Admin", "role": "ADMIN", "...": "..." }
+]
+```
+
+---
+
+### PUT /admin/users/{id}/role
+`role` must be `ADMIN` or `MEMBER`.
+```bash
+curl -X PUT http://localhost:8080/api/admin/users/1/role \
+  -H "Authorization: Bearer {{adminToken}}" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"ADMIN"}'
+```
+```json
+{ "id": 1, "displayName": "Alice Smith", "role": "ADMIN", "...": "..." }
+```
+
+---
+
+### GET /admin/channels
+```bash
+curl http://localhost:8080/api/admin/channels \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+[
+  { "id": 1, "name": "general", "isPrivate": false, "memberCount": 5, "...": "..." }
+]
+```
+
+---
+
+### GET /admin/channels/{id}/messages
+```bash
+curl "http://localhost:8080/api/admin/channels/1/messages?page=0&size=50" \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+[
+  { "id": 10, "senderName": "Alice Smith", "content": "Hello team!", "...": "..." }
+]
+```
+
+---
+
+### GET /admin/dm/conversations
+```bash
+curl http://localhost:8080/api/admin/dm/conversations \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+[
+  { "id": 1, "isGroup": false, "participants": [ { "...": "..." } ], "...": "..." }
+]
+```
+
+---
+
+### GET /admin/dm/conversations/{id}/messages
+```bash
+curl "http://localhost:8080/api/admin/dm/conversations/1/messages?page=0&size=50" \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+[
+  { "id": 7, "senderName": "Alice Smith", "content": "Hey!", "...": "..." }
+]
+```
+
+---
+
+### GET /admin/search?q=hello
+Searches all messages, DMs, and users workspace-wide.
+```bash
+curl "http://localhost:8080/api/admin/search?q=hello" \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+{
+  "messages": [ { "id": 10, "content": "Hello team!", "...": "..." } ],
+  "dms":      [ { "id": 7,  "content": "Hey!",        "...": "..." } ],
+  "users":    [ { "id": 1,  "displayName": "Alice Smith", "...": "..." } ]
+}
+```
+
+---
+
+### GET /admin/users/{id}/activity
+```bash
+curl http://localhost:8080/api/admin/users/1/activity \
+  -H "Authorization: Bearer {{adminToken}}"
+```
+```json
+{
+  "user":     { "id": 1, "displayName": "Alice Smith", "...": "..." },
+  "messages": [ { "id": 10, "content": "Hello team!", "...": "..." } ],
+  "dms":      [ { "id": 7,  "content": "Hey!",        "...": "..." } ],
+  "channels": [ { "id": 1,  "name": "general",        "...": "..." } ]
+}
+```
