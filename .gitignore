@@ -1,0 +1,37 @@
+# ─── Frontend ───────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ─── Backend ────────────────────────────────────────────
+backend/target/
+backend/.env
+backend/*.log
+
+# ─── Maven wrapper cache ─────────────────────────────────
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# ─── IDEs ────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# ─── OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs ────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Secrets ─────────────────────────────────────────────
+*.env
+*.pem
+*.key
+*.p12
+
+# ─── Claude ──────────────────────────────────────────────
+.claude/
